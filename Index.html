@@ -1,0 +1,694 @@
+```html
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#16a34a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>কৃষি আবহাওয়া</title>
+    
+    <!-- Dynamic PWA Manifest and Apple Touch Icon will be injected here -->
+    <link id="manifest-link" rel="manifest">
+    <link id="apple-touch-icon" rel="apple-touch-icon">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap" rel="stylesheet">
+    
+    <style>
+        body {
+            font-family: 'Tiro Bangla', serif;
+            background-color: #f3f4f6;
+            color: #1f2937;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            overflow-x: hidden;
+        }
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: #ffffff;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        @media (min-width: 481px) {
+            body { align-items: center; padding: 2rem 0; }
+            .app-container { min-height: 850px; border-radius: 1.5rem; overflow: hidden; }
+        }
+        .spinner { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .alert-pulse { animation: alertPulse 2s infinite; }
+        @keyframes alertPulse { 
+            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 
+            70% { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } 
+        }
+
+        /* PWA Install Bottom Sheet Animation */
+        .bottom-sheet-enter { transform: translateY(100%); }
+        .bottom-sheet-active { transform: translateY(0); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- Header Section -->
+        <div class="bg-gradient-to-br from-green-700 to-green-600 text-white px-5 py-6 rounded-b-[2rem] shadow-md z-10">
+            <div class="flex justify-between items-start mb-3">
+                <div>
+                    <h1 class="text-2xl font-bold flex items-center gap-2">
+                        <i data-lucide="cloud-sun" class="w-7 h-7 text-yellow-300"></i> কৃষি আবহাওয়া
+                    </h1>
+                    
+                    <!-- Location Display & Change Button -->
+                    <button onclick="openLocationModal()" class="flex items-center gap-1.5 mt-1.5 bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-colors text-sm font-medium border border-white/20">
+                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-200"></i> 
+                        <span id="current-location-name">রতনপুর, মেহেরপুর</span>
+                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1 opacity-70"></i>
+                    </button>
+                </div>
+                
+                <div class="flex gap-2">
+                    <button onclick="getLocationViaGPS()" class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition-colors shadow-sm" title="আমার বর্তমান স্থান">
+                        <i data-lucide="target" class="w-5 h-5 text-white"></i>
+                    </button>
+                    <button onclick="fetchWeatherData()" class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition-colors shadow-sm" title="রিফ্রেশ করুন">
+                        <i data-lucide="rotate-cw" class="w-5 h-5 text-white"></i>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Current Temp Preview -->
+            <div id="header-temp-loading" class="animate-pulse flex items-center gap-3 mt-4">
+                <div class="h-12 w-12 bg-white/20 rounded-full"></div>
+                <div class="h-8 w-24 bg-white/20 rounded-md"></div>
+            </div>
+            <div id="header-temp-view" class="hidden items-end gap-3 mt-4">
+                <span id="main-temp" class="text-5xl font-extrabold tracking-tight">--°</span>
+                <span id="main-desc" class="text-lg font-medium text-green-50 mb-1.5">--</span>
+            </div>
+        </div>
+
+        <!-- Scrollable Main Content -->
+        <div class="flex-1 overflow-y-auto pb-6 relative z-0 -mt-4 pt-6 bg-white">
+            
+            <div id="loading" class="py-20 text-center flex flex-col items-center justify-center">
+                <div class="bg-green-50 p-4 rounded-full mb-4">
+                    <i data-lucide="loader-2" class="w-8 h-8 spinner text-green-600"></i>
+                </div>
+                <p id="loading-text" class="text-gray-600 font-medium">তথ্য সংগ্রহ করা হচ্ছে...</p>
+            </div>
+
+            <!-- Content Container -->
+            <div id="weather-content" class="hidden px-5 space-y-6">
+                <!-- 1. Nowcasting Alert -->
+                <div id="nowcast-banner" class="hidden w-full"></div>
+
+                <!-- 2. Today's Harvest Advice -->
+                <div id="harvest-alert" class="rounded-2xl border p-4 shadow-sm transition-all"></div>
+
+                <!-- 3. Current Weather Details Grid -->
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="bg-blue-50/50 rounded-2xl p-3 flex flex-col items-center justify-center border border-blue-100/50">
+                        <div class="bg-blue-100/50 p-2 rounded-full mb-2"><i data-lucide="droplets" class="w-5 h-5 text-blue-600"></i></div>
+                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">আর্দ্রতা</p>
+                        <p id="detail-humidity" class="font-bold text-gray-800 text-sm">--%</p>
+                    </div>
+                    <div class="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-gray-100">
+                        <div class="bg-gray-200/50 p-2 rounded-full mb-2"><i data-lucide="wind" class="w-5 h-5 text-gray-600"></i></div>
+                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">বাতাস</p>
+                        <p id="detail-wind" class="font-bold text-gray-800 text-sm">-- কিমি/ঘ</p>
+                    </div>
+                    <div class="bg-indigo-50/50 rounded-2xl p-3 flex flex-col items-center justify-center border border-indigo-100/50">
+                        <div class="bg-indigo-100/50 p-2 rounded-full mb-2"><i data-lucide="umbrella" class="w-5 h-5 text-indigo-600"></i></div>
+                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">বৃষ্টিপাত</p>
+                        <p id="detail-precip" class="font-bold text-gray-800 text-sm">-- মিমি</p>
+                    </div>
+                </div>
+
+                <!-- 4. Hourly Forecast -->
+                <div>
+                    <div class="flex justify-between items-end mb-3">
+                        <h3 class="font-bold text-lg text-gray-800">আজকের পূর্বাভাস</h3>
+                        <span class="text-xs text-gray-400 font-medium">প্রতি ঘণ্টা</span>
+                    </div>
+                    <div class="relative">
+                        <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
+                        <div id="hourly-list" class="flex overflow-x-auto gap-3 pb-2 pt-1 no-scrollbar snap-x"></div>
+                    </div>
+                </div>
+
+                <!-- 5. 7-Day Forecast -->
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800 mb-3">আগামী ৭ দিন</h3>
+                    <div id="forecast-list" class="bg-gray-50/50 border border-gray-100 rounded-2xl p-2 space-y-1"></div>
+                </div>
+            </div> 
+            
+            <!-- Footer Info -->
+            <div id="footer-info" class="hidden mt-8 px-5">
+                <div class="flex items-center justify-center gap-2 text-[11px] text-gray-400 mb-3">
+                    <i data-lucide="database" class="w-3 h-3"></i> 
+                    <span>তথ্যসূত্র: Open-Meteo</span>
+                    <span>•</span>
+                    <span>আপডেট: <span id="last-update" class="font-semibold">--</span></span>
+                </div>
+                
+                <div class="border-t border-gray-100 pt-4 pb-2 text-center">
+                    <p class="text-[12px] text-gray-500 font-medium">
+                        উন্নয়নে: <span class="text-green-700 font-bold tracking-wide">মিজানুর রহমান</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Location Search Modal -->
+        <div id="location-modal" class="fixed inset-0 bg-gray-900/40 z-50 hidden flex-col justify-end sm:justify-center items-center backdrop-blur-sm">
+            <div class="bg-white w-full sm:w-[400px] sm:rounded-3xl rounded-t-3xl p-6 shadow-2xl transform transition-transform translate-y-full" id="modal-content">
+                <div class="flex justify-between items-center mb-5">
+                    <h3 class="text-xl font-bold text-gray-800">স্থান পরিবর্তন করুন</h3>
+                    <button onclick="closeLocationModal()" class="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
+                        <i data-lucide="x" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                </div>
+                
+                <button onclick="getLocationViaGPS()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 mb-4 transition-colors">
+                    <i data-lucide="target" class="w-5 h-5"></i>
+                    আমার বর্তমান অবস্থান ব্যবহার করুন
+                </button>
+
+                <div class="relative flex items-center my-4">
+                    <div class="flex-grow border-t border-gray-200"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-sm">অথবা সার্চ করুন</span>
+                    <div class="flex-grow border-t border-gray-200"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <div class="relative flex-1">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="যেমন: ঢাকা, রাজশাহী..." class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700">
+                    </div>
+                    <button onclick="searchLocation()" class="bg-green-600 hover:bg-green-700 text-white px-5 rounded-xl font-medium transition-colors">
+                        খুঁজুন
+                    </button>
+                </div>
+                <p id="search-error" class="text-red-500 text-sm mt-2 hidden text-center">স্থানটি খুঁজে পাওয়া যায়নি।</p>
+            </div>
+        </div>
+
+        <!-- PWA App Install Modal (Bottom Sheet) -->
+        <div id="pwa-install-modal" class="fixed inset-x-0 bottom-0 z-50 hidden flex-col items-center pb-4 px-4 pointer-events-none">
+            <div id="pwa-sheet-content" class="bg-white w-full max-w-md rounded-3xl p-5 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] border border-gray-100 bottom-sheet-enter pointer-events-auto">
+                <div class="flex items-start gap-4">
+                    <!-- Base64 App Icon -->
+                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+                        <i data-lucide="cloud-sun" class="w-8 h-8 text-white"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1">কৃষি আবহাওয়া অ্যাপ</h3>
+                        <p class="text-[13px] text-gray-600 leading-snug">সহজে এবং দ্রুত আবহাওয়ার খবর পেতে অ্যাপটি আপনার মোবাইলে ইনস্টল করুন।</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-5">
+                    <button onclick="dismissInstallPrompt()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                        পরে
+                    </button>
+                    <button onclick="installPWA()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-sm shadow-md transition-colors flex justify-center items-center gap-1.5">
+                        <i data-lucide="download" class="w-4 h-4"></i> ইনস্টল করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- PWA Installation & Service Worker Logic -->
+    <script>
+        // Generate a dynamic SVG App Icon Base64
+        const appIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#16a34a" rx="112"/><path d="M160 256a96 96 0 0 1 192 0" fill="none" stroke="#fde047" stroke-width="48" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#fde047"/><path d="M368 352a48 48 0 0 0-48-48H192a64 64 0 0 0 0 128h128a80 80 0 0 0 48-80z" fill="#ffffff"/></svg>`;
+        const appIconBase64 = 'data:image/svg+xml;base64,' + btoa(appIconSvg);
+
+        // Inject Manifest
+        const manifest = {
+            name: "কৃষি আবহাওয়া",
+            short_name: "আবহাওয়া",
+            description: "কৃষকদের জন্য লাইভ আবহাওয়া ও পূর্বাভাস।",
+            start_url: ".",
+            display: "standalone",
+            background_color: "#f3f4f6",
+            theme_color: "#16a34a",
+            icons: [
+                { src: appIconBase64, sizes: "192x192 512x512", type: "image/svg+xml", purpose: "any maskable" }
+            ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
+        document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
+        document.getElementById('apple-touch-icon').setAttribute('href', appIconBase64);
+
+        // Inject Service Worker (Caching logic)
+        const swCode = `
+            const CACHE_NAME = 'krishi-weather-v2';
+            self.addEventListener('install', e => { self.skipWaiting(); });
+            self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
+            self.addEventListener('fetch', e => {
+                // Pass through for API requests to ensure real-time data
+                if (e.request.url.includes('api.open-meteo.com')) {
+                    e.respondWith(fetch(e.request));
+                } else {
+                    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+                }
+            });
+        `;
+        const swBlob = new Blob([swCode], {type: 'application/javascript'});
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log("SW bypass for environment."));
+        }
+
+        // Handle PWA Install Prompt
+        let deferredPrompt;
+        const installModal = document.getElementById('pwa-install-modal');
+        const sheetContent = document.getElementById('pwa-sheet-content');
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault(); // Prevent native prompt
+            deferredPrompt = e;
+            // Show custom modal after 3 seconds of using the app
+            setTimeout(() => {
+                installModal.classList.remove('hidden');
+                installModal.classList.add('flex');
+                setTimeout(() => {
+                    sheetContent.classList.add('bottom-sheet-active');
+                    sheetContent.classList.remove('bottom-sheet-enter');
+                }, 10);
+            }, 3000);
+        });
+
+        window.addEventListener('appinstalled', () => {
+            dismissInstallPrompt();
+            deferredPrompt = null;
+        });
+
+        function dismissInstallPrompt() {
+            sheetContent.classList.remove('bottom-sheet-active');
+            sheetContent.classList.add('bottom-sheet-enter');
+            setTimeout(() => {
+                installModal.classList.add('hidden');
+                installModal.classList.remove('flex');
+            }, 400);
+        }
+
+        async function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    dismissInstallPrompt();
+                }
+                deferredPrompt = null;
+            } else {
+                // Fallback for browsers that don't support beforeinstallprompt properly
+                alert("আপনার ব্রাউজারের মেনু (⋮) থেকে 'Install App' বা 'Add to Home Screen' নির্বাচন করুন।");
+                dismissInstallPrompt();
+            }
+        }
+    </script>
+
+    <!-- Weather Logic & API Scripts -->
+    <script>
+        lucide.createIcons();
+
+        let currentLat = 23.651;
+        let currentLon = 88.644;
+        let currentLocationName = "রতনপুর, মেহেরপুর";
+
+        const weatherCodes = {
+            0: { text: "পরিষ্কার আকাশ", icon: "sun", color: "text-amber-500" },
+            1: { text: "প্রধানত পরিষ্কার", icon: "sun", color: "text-amber-500" },
+            2: { text: "আংশিক মেঘলা", icon: "cloud-sun", color: "text-gray-500" },
+            3: { text: "মেঘলা", icon: "cloud", color: "text-gray-600" },
+            45: { text: "কুয়াশা", icon: "cloud-fog", color: "text-gray-400" },
+            48: { text: "কুয়াশা", icon: "cloud-fog", color: "text-gray-400" },
+            51: { text: "গুঁড়ি বৃষ্টি", icon: "cloud-drizzle", color: "text-blue-400" },
+            53: { text: "মাঝারি গুঁড়ি বৃষ্টি", icon: "cloud-drizzle", color: "text-blue-500" },
+            55: { text: "ভারী গুঁড়ি বৃষ্টি", icon: "cloud-drizzle", color: "text-blue-600" },
+            61: { text: "হালকা বৃষ্টি", icon: "cloud-rain", color: "text-blue-500" },
+            63: { text: "মাঝারি বৃষ্টি", icon: "cloud-rain", color: "text-blue-600" },
+            65: { text: "ভারী বৃষ্টি", icon: "cloud-rain-wind", color: "text-blue-700" },
+            71: { text: "তুষারপাত", icon: "snowflake", color: "text-teal-400" },
+            80: { text: "বৃষ্টির পশলা", icon: "cloud-rain", color: "text-blue-600" },
+            81: { text: "মাঝারি বৃষ্টি", icon: "cloud-rain", color: "text-blue-600" },
+            82: { text: "ভারী বৃষ্টি", icon: "cloud-lightning", color: "text-blue-700" },
+            95: { text: "বজ্রঝড়", icon: "cloud-lightning", color: "text-purple-600" },
+            96: { text: "শিলাবৃষ্টি সহ বজ্রঝড়", icon: "cloud-lightning", color: "text-purple-700" },
+            99: { text: "ভারী শিলাবৃষ্টি", icon: "cloud-lightning", color: "text-purple-700" },
+        };
+
+        function en2bnNumber(num) {
+            const english = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+            const bengali = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+            return String(num).split('').map(c => {
+                const i = english.indexOf(c);
+                return i !== -1 ? bengali[i] : c;
+            }).join('');
+        }
+
+        function getDayName(dateString) {
+            const days = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
+            const date = new Date(dateString);
+            const today = new Date();
+            if (date.toDateString() === today.toDateString()) return 'আজ';
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            if (date.toDateString() === tomorrow.toDateString()) return 'আগামীকাল';
+            return days[date.getDay()];
+        }
+
+        function formatHour(isoString) {
+            const date = new Date(isoString);
+            let hours = date.getHours();
+            const ampm = hours >= 12 ? 'পিএম' : 'এএম';
+            hours = hours % 12;
+            hours = hours ? hours : 12; 
+            return en2bnNumber(hours) + ' ' + ampm;
+        }
+
+        // --- Location UI Logic ---
+        function openLocationModal() {
+            const modal = document.getElementById('location-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => { content.classList.remove('translate-y-full'); }, 10);
+        }
+
+        function closeLocationModal() {
+            const modal = document.getElementById('location-modal');
+            const content = document.getElementById('modal-content');
+            content.classList.add('translate-y-full');
+            setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                modal.classList.remove('flex');
+                document.getElementById('search-error').classList.add('hidden');
+            }, 300);
+        }
+
+        // --- GPS Logic ---
+        function getLocationViaGPS() {
+            closeLocationModal();
+            showLoading("আপনার বর্তমান অবস্থান খোঁজা হচ্ছে...");
+            
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    async (position) => {
+                        currentLat = position.coords.latitude;
+                        currentLon = position.coords.longitude;
+                        await reverseGeocode(currentLat, currentLon);
+                        fetchWeatherData();
+                    },
+                    (error) => {
+                        alert("অবস্থান নির্ণয় করা সম্ভব হয়নি। ডিভাইসের লোকেশন সার্ভিস অন করুন।");
+                        fetchWeatherData();
+                    },
+                    { timeout: 10000 }
+                );
+            } else {
+                alert("আপনার ব্রাউজার জিপিএস লোকেশন সাপোর্ট করে না।");
+                fetchWeatherData();
+            }
+        }
+
+        // --- Search Logic ---
+        async function searchLocation() {
+            const query = document.getElementById('search-input').value.trim();
+            if(!query) return;
+
+            document.getElementById('search-error').classList.add('hidden');
+            const searchBtn = event.currentTarget;
+            searchBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 spinner text-white"></i>`;
+            lucide.createIcons();
+
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, Bangladesh&format=json&limit=1`);
+                const data = await res.json();
+
+                if(data && data.length > 0) {
+                    currentLat = data[0].lat;
+                    currentLon = data[0].lon;
+                    currentLocationName = data[0].display_name.split(',')[0];
+                    closeLocationModal();
+                    fetchWeatherData();
+                } else {
+                    document.getElementById('search-error').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('search-error').classList.remove('hidden');
+            } finally {
+                searchBtn.innerHTML = `খুঁজুন`;
+            }
+        }
+
+        // --- Reverse Geocoding ---
+        async function reverseGeocode(lat, lon) {
+            try {
+                const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+                const data = await res.json();
+                if(data && data.address) {
+                    const village = data.address.village || data.address.suburb || data.address.town || "";
+                    const county = data.address.county || data.address.state_district || "";
+                    currentLocationName = village ? `${village}, ${county}` : county || "অজানা স্থান";
+                    currentLocationName = currentLocationName.replace("District", "").replace("Upazila", "").trim();
+                } else {
+                    currentLocationName = "আপনার অবস্থান";
+                }
+            } catch (e) {
+                currentLocationName = "আপনার অবস্থান";
+            }
+        }
+
+        function showLoading(text) {
+            document.getElementById('weather-content').style.display = 'none';
+            document.getElementById('footer-info').style.display = 'none';
+            document.getElementById('header-temp-view').style.display = 'none';
+            
+            document.getElementById('loading').style.display = 'flex';
+            document.getElementById('header-temp-loading').style.display = 'flex';
+            document.getElementById('loading-text').innerText = text || "তথ্য সংগ্রহ করা হচ্ছে...";
+        }
+
+        // --- Main Weather Fetch ---
+        async function fetchWeatherData() {
+            showLoading("আবহাওয়ার লাইভ আপডেট আনা হচ্ছে...");
+            document.getElementById('current-location-name').innerText = currentLocationName;
+
+            try {
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&minutely_15=precipitation,precipitation_probability&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FDhaka`;
+                
+                const response = await fetch(apiUrl);
+                if(!response.ok) throw new Error("API Request Failed");
+                const data = await response.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('header-temp-loading').style.display = 'none';
+                document.getElementById('header-temp-view').style.display = 'flex';
+                document.getElementById('weather-content').style.display = 'block';
+                document.getElementById('footer-info').style.display = 'block';
+                
+                // 1. Current Weather
+                const current = data.current;
+                const codeInfo = weatherCodes[current.weather_code] || { text: "অজানা", icon: "cloud", color:"text-gray-500" };
+                
+                document.getElementById('main-temp').innerText = en2bnNumber(Math.round(current.temperature_2m)) + '°';
+                document.getElementById('main-desc').innerHTML = `<i data-lucide="${codeInfo.icon}" class="inline w-5 h-5 mr-1 align-text-bottom"></i> ${codeInfo.text}`;
+                
+                document.getElementById('detail-humidity').innerText = en2bnNumber(current.relative_humidity_2m) + '%';
+                document.getElementById('detail-wind').innerText = en2bnNumber(Math.round(current.wind_speed_10m));
+                document.getElementById('detail-precip').innerText = en2bnNumber(current.precipitation);
+                
+                // 2. NOWCASTING LOGIC
+                const nowTime = new Date().getTime();
+                const minutely = data.minutely_15;
+                const nowcastBanner = document.getElementById('nowcast-banner');
+                let rainMinutes = null;
+                let isRainingNow = current.precipitation > 0;
+
+                for (let i = 0; i < minutely.time.length; i++) {
+                    const blockTime = new Date(minutely.time[i]).getTime();
+                    if (blockTime >= nowTime && blockTime <= nowTime + 60 * 60000) {
+                        if (minutely.precipitation[i] > 0 || minutely.precipitation_probability[i] >= 30) {
+                            const diffMins = Math.round((blockTime - nowTime) / 60000);
+                            if (rainMinutes === null) rainMinutes = diffMins; 
+                            break;
+                        }
+                    }
+                }
+
+                if (isRainingNow) {
+                    nowcastBanner.style.display = 'block';
+                    nowcastBanner.innerHTML = `
+                        <div class="bg-red-500 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 alert-pulse">
+                            <div class="bg-white/20 p-2 rounded-full shrink-0"><i data-lucide="cloud-lightning" class="w-6 h-6"></i></div>
+                            <div>
+                                <h4 class="font-bold text-base leading-tight mb-0.5">এখন বৃষ্টি হচ্ছে!</h4>
+                                <p class="text-[12px] text-red-50 opacity-90">নিরাপদ স্থানে অবস্থান করুন ও ফসল ঢেকে রাখুন।</p>
+                            </div>
+                        </div>
+                    `;
+                } else if (rainMinutes !== null && rainMinutes <= 60) {
+                    nowcastBanner.style.display = 'block';
+                    const minStr = rainMinutes <= 5 ? "যেকোনো মুহূর্তে" : `আগামী ${en2bnNumber(rainMinutes)} মিনিটের মধ্যে`;
+                    nowcastBanner.innerHTML = `
+                        <div class="bg-orange-500 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 alert-pulse">
+                            <div class="bg-white/20 p-2 rounded-full shrink-0"><i data-lucide="timer" class="w-6 h-6"></i></div>
+                            <div>
+                                <h4 class="font-bold text-base leading-tight mb-0.5">বৃষ্টির সতর্কতা!</h4>
+                                <p class="text-[12px] text-orange-50 opacity-90"><span class="font-bold bg-white/20 px-1 rounded">${minStr}</span> বৃষ্টি শুরু হতে পারে।</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    nowcastBanner.style.display = 'block';
+                    nowcastBanner.innerHTML = `
+                        <div class="bg-teal-50 border border-teal-100 p-3 rounded-2xl flex items-center gap-3">
+                            <div class="bg-teal-100 text-teal-600 p-1.5 rounded-full shrink-0"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
+                            <div>
+                                <p class="text-[13px] text-teal-800 font-medium leading-snug">আগামী ১ ঘণ্টায় বৃষ্টির কোনো সম্ভাবনা নেই। নিশ্চিন্তে কাজ করুন।</p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 3. Daily Harvest Alert
+                const todayPrecipProb = data.daily.precipitation_probability_max[0];
+                const alertBox = document.getElementById('harvest-alert');
+                
+                if (todayPrecipProb >= 40) {
+                    alertBox.className = "rounded-2xl border p-4 shadow-sm transition-all bg-red-50/50 border-red-200 text-red-800";
+                    alertBox.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 shrink-0 mt-0.5"></i>
+                            <div>
+                                <h4 class="font-bold text-sm mb-1">আজ মাঠে ধান কাটা ঝুঁকিপূর্ণ</h4>
+                                <p class="text-xs text-red-600/80">আজ সারাদিনে বৃষ্টির সম্ভাবনা ${en2bnNumber(todayPrecipProb)}%। ধান কাটা থেকে বিরত থাকাই ভালো।</p>
+                            </div>
+                        </div>
+                    `;
+                } else {
+                     alertBox.className = "rounded-2xl border p-4 shadow-sm transition-all bg-green-50/50 border-green-200 text-green-800";
+                     alertBox.innerHTML = `
+                        <div class="flex items-start gap-3">
+                            <i data-lucide="sun-medium" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
+                            <div>
+                                <h4 class="font-bold text-sm mb-1">আবহাওয়া ধান কাটার অনুকূল</h4>
+                                <p class="text-xs text-green-700/80">আজ বৃষ্টির সম্ভাবনা কম (${en2bnNumber(todayPrecipProb)}%)। ধান কাটা বা শুকানোর জন্য ভালো দিন।</p>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // 4. Hourly Forecast
+                const hourlyList = document.getElementById('hourly-list');
+                hourlyList.innerHTML = '';
+                const currentHourStr = new Date().toISOString().slice(0,13) + ":00";
+                let startIndex = data.hourly.time.findIndex(t => t.startsWith(currentHourStr));
+                if(startIndex === -1) startIndex = 0;
+
+                for (let i = startIndex; i < startIndex + 12; i++) {
+                    if(!data.hourly.time[i]) break;
+                    
+                    const timeStr = formatHour(data.hourly.time[i]);
+                    const temp = en2bnNumber(Math.round(data.hourly.temperature_2m[i]));
+                    const prob = data.hourly.precipitation_probability[i];
+                    const hCode = weatherCodes[data.hourly.weather_code[i]] || { icon: "cloud", color: "text-gray-400" };
+                    
+                    let bgClass = "bg-white border-gray-100 text-gray-800";
+                    let probIconColor = "text-blue-400";
+                    if(prob >= 40) { bgClass = "bg-red-50 border-red-100 text-red-900"; probIconColor = "text-red-500"; }
+                    else if(prob > 15) { bgClass = "bg-orange-50 border-orange-100 text-orange-900"; probIconColor = "text-orange-500"; }
+
+                    hourlyList.innerHTML += `
+                        <div class="snap-center w-16 ${bgClass} border rounded-2xl py-3 flex flex-col items-center justify-center shrink-0 shadow-sm">
+                            <span class="text-[11px] font-semibold text-gray-500 mb-2 whitespace-nowrap">${i === startIndex ? 'এখন' : timeStr}</span>
+                            <i data-lucide="${hCode.icon}" class="w-6 h-6 ${hCode.color} mb-2"></i>
+                            <span class="font-bold text-sm mb-1.5">${temp}°</span>
+                            <div class="flex items-center gap-0.5 text-[10px] font-medium ${prob === 0 ? 'text-gray-300' : probIconColor}">
+                                <i data-lucide="droplets" class="w-3 h-3"></i> ${en2bnNumber(prob)}%
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // 5. 7-Day Forecast
+                const daily = data.daily;
+                const forecastList = document.getElementById('forecast-list');
+                forecastList.innerHTML = '';
+                
+                for (let i = 0; i < daily.time.length; i++) {
+                    const dayName = getDayName(daily.time[i]);
+                    const maxTemp = en2bnNumber(Math.round(daily.temperature_2m_max[i]));
+                    const minTemp = en2bnNumber(Math.round(daily.temperature_2m_min[i]));
+                    const precipProb = daily.precipitation_probability_max[i];
+                    const dCodeInfo = weatherCodes[daily.weather_code[i]] || { icon: "cloud", color: "text-gray-400" };
+                    
+                    let probHtml = `<span class="text-[11px] text-gray-300 w-12 text-center">-</span>`;
+                    if (precipProb >= 40) probHtml = `<span class="text-[11px] text-red-600 font-bold bg-red-100/80 px-2 py-0.5 rounded-full w-12 text-center">${en2bnNumber(precipProb)}%</span>`;
+                    else if (precipProb > 0) probHtml = `<span class="text-[11px] text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full w-12 text-center">${en2bnNumber(precipProb)}%</span>`;
+                    
+                    const isToday = i === 0;
+                    
+                    const html = `
+                        <div class="flex items-center justify-between p-3 rounded-xl ${isToday ? 'bg-white shadow-sm ring-1 ring-gray-100' : 'hover:bg-gray-100/50'} transition-colors">
+                            <div class="flex items-center gap-3 w-1/3">
+                                <span class="font-semibold text-[13px] ${isToday ? 'text-green-700' : 'text-gray-700'}">${dayName}</span>
+                            </div>
+                            <div class="w-1/3 flex justify-center items-center gap-2">
+                                <i data-lucide="${dCodeInfo.icon}" class="w-4 h-4 ${dCodeInfo.color}"></i>
+                                ${probHtml}
+                            </div>
+                            <div class="w-1/3 text-right">
+                                <span class="font-bold text-gray-800 text-sm">${maxTemp}°</span>
+                                <span class="text-[11px] text-gray-400 font-medium ml-1">${minTemp}°</span>
+                            </div>
+                        </div>
+                    `;
+                    forecastList.innerHTML += html;
+                }
+                
+                let timeStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute:'2-digit', hour12: true });
+                timeStr = timeStr.replace('AM', 'এএম').replace('PM', 'পিএম');
+                document.getElementById('last-update').innerText = en2bnNumber(timeStr);
+
+                lucide.createIcons();
+                
+            } catch (error) {
+                console.error(error);
+                document.getElementById('loading').innerHTML = `
+                    <div class="bg-red-50 p-6 rounded-2xl mx-5 mt-10 text-center border border-red-100">
+                        <i data-lucide="wifi-off" class="w-10 h-10 text-red-400 mx-auto mb-3"></i>
+                        <p class="text-red-800 text-sm mb-4 font-medium">সংযোগ বিচ্ছিন্ন! ইন্টারনেট চেক করুন।</p>
+                        <button onclick="fetchWeatherData()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl shadow-sm transition-colors">পুনরায় চেষ্টা করুন</button>
+                    </div>
+                `;
+                lucide.createIcons();
+            }
+        }
+
+        // Run on load
+        document.addEventListener('DOMContentLoaded', fetchWeatherData);
+    </script>
+</body>
+</html>
+
+```
