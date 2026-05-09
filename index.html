@@ -3,12 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#16a34a">
+    <meta name="theme-color" content="#10b981">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>কৃষি আবহাওয়া</title>
     
-    <!-- Dynamic PWA Manifest and Apple Touch Icon will be injected here -->
     <link id="manifest-link" rel="manifest">
     <link id="apple-touch-icon" rel="apple-touch-icon">
 
@@ -16,216 +15,273 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Google Fonts -->
+    <!-- Google Fonts: Tiro Bangla -->
     <link href="https://fonts.googleapis.com/css2?family=Tiro+Bangla:ital@0;1&display=swap" rel="stylesheet">
     
     <style>
         body {
             font-family: 'Tiro Bangla', serif;
-            background-color: #f3f4f6;
+            background-color: #e2e8f0; 
             color: #1f2937;
             min-height: 100vh;
             display: flex;
             justify-content: center;
             overflow-x: hidden;
+            margin: 0;
         }
         .app-container {
             width: 100%;
             max-width: 480px;
-            background-color: #ffffff;
+            background-color: #f8fafc; 
             min-height: 100vh;
-            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             display: flex;
             flex-direction: column;
             position: relative;
         }
         @media (min-width: 481px) {
             body { align-items: center; padding: 2rem 0; }
-            .app-container { min-height: 850px; border-radius: 1.5rem; overflow: hidden; }
+            .app-container { min-height: 850px; border-radius: 2rem; overflow: hidden; }
         }
+        
         .spinner { animation: spin 1s linear infinite; }
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
+        .fade-in { animation: fadeIn 0.6s ease-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
         .alert-pulse { animation: alertPulse 2s infinite; }
         @keyframes alertPulse { 
-            0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); } 
-            70% { box-shadow: 0 0 0 8px rgba(249, 115, 22, 0); } 
-            100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); } 
+            0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); } 
+            70% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); } 
+            100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } 
         }
 
-        /* PWA Install Bottom Sheet Animation */
         .bottom-sheet-enter { transform: translateY(100%); }
         .bottom-sheet-active { transform: translateY(0); transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        
+        .glass {
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Modal Overlay Transition */
+        .modal-overlay { transition: opacity 0.3s ease; }
     </style>
 </head>
 <body>
 
     <div class="app-container">
         
-        <!-- Header Section -->
-        <div class="bg-gradient-to-br from-green-700 to-green-600 text-white px-5 py-6 rounded-b-[2rem] shadow-md z-10">
-            <div class="flex justify-between items-start mb-3">
-                <div>
-                    <h1 class="text-2xl font-bold flex items-center gap-2">
-                        <i data-lucide="cloud-sun" class="w-7 h-7 text-yellow-300"></i> কৃষি আবহাওয়া
-                    </h1>
-                    
-                    <!-- Location Display & Change Button -->
-                    <button onclick="openLocationModal()" class="flex items-center gap-1.5 mt-1.5 bg-white/10 hover:bg-white/20 px-3 py-1 rounded-full transition-colors text-sm font-medium border border-white/20">
-                        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-green-200"></i> 
-                        <span id="current-location-name">রতনপুর, মেহেরপুর</span>
-                        <i data-lucide="chevron-down" class="w-3.5 h-3.5 ml-1 opacity-70"></i>
-                    </button>
-                </div>
+        <!-- Header -->
+        <header id="app-header" class="bg-gradient-to-br from-emerald-600 via-green-500 to-green-600 text-white pt-6 pb-12 px-6 relative z-10 transition-all duration-700">
+            <div class="flex justify-between items-center mb-6">
+                <button onclick="openLocationModal()" class="glass hover:bg-white/20 px-4 py-2 rounded-full transition-all duration-300 flex items-center gap-2 shadow-sm group">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-emerald-100 group-hover:text-white transition-colors"></i> 
+                    <span id="current-location-name" class="text-sm font-semibold tracking-wide">রতনপুর, মেহেরপুর</span>
+                    <i data-lucide="chevron-down" class="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity"></i>
+                </button>
                 
-                <div class="flex gap-2">
-                    <button onclick="getLocationViaGPS()" class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition-colors shadow-sm" title="আমার বর্তমান স্থান">
+                <div class="flex gap-3">
+                    <button onclick="getLocationViaGPS()" class="p-2 glass rounded-full hover:bg-white/30 transition-all shadow-sm active:scale-95" title="আমার বর্তমান স্থান">
                         <i data-lucide="target" class="w-5 h-5 text-white"></i>
                     </button>
-                    <button onclick="fetchWeatherData()" class="p-2.5 bg-white/20 rounded-full hover:bg-white/30 transition-colors shadow-sm" title="রিফ্রেশ করুন">
+                    <button onclick="fetchWeatherData()" class="p-2 glass rounded-full hover:bg-white/30 transition-all shadow-sm active:scale-95" title="রিফ্রেশ করুন">
                         <i data-lucide="rotate-cw" class="w-5 h-5 text-white"></i>
                     </button>
                 </div>
             </div>
             
-            <!-- Current Temp Preview -->
-            <div id="header-temp-loading" class="animate-pulse flex items-center gap-3 mt-4">
-                <div class="h-12 w-12 bg-white/20 rounded-full"></div>
-                <div class="h-8 w-24 bg-white/20 rounded-md"></div>
+            <div id="header-temp-loading" class="animate-pulse flex flex-col items-center gap-4 mt-2 mb-4">
+                <div class="h-16 w-16 bg-white/20 rounded-full"></div>
+                <div class="h-14 w-32 bg-white/20 rounded-2xl"></div>
+                <div class="h-6 w-24 bg-white/20 rounded-lg"></div>
             </div>
-            <div id="header-temp-view" class="hidden items-end gap-3 mt-4">
-                <span id="main-temp" class="text-5xl font-extrabold tracking-tight">--°</span>
-                <span id="main-desc" class="text-lg font-medium text-green-50 mb-1.5">--</span>
-            </div>
-        </div>
 
-        <!-- Scrollable Main Content -->
-        <div class="flex-1 overflow-y-auto pb-6 relative z-0 -mt-4 pt-6 bg-white">
+            <div id="header-temp-view" class="hidden flex-col items-center justify-center mt-2 mb-4">
+                <div id="main-icon-container" class="mb-2">
+                    <i data-lucide="cloud-sun" class="w-16 h-16 text-yellow-300 drop-shadow-md"></i>
+                </div>
+                <div class="flex items-start">
+                    <span id="main-temp" class="text-7xl font-bold tracking-tighter drop-shadow-sm">--</span>
+                    <span class="text-4xl font-medium mt-2 text-emerald-50">°</span>
+                </div>
+                <span id="main-desc" class="text-lg font-medium text-emerald-50 mt-1 bg-black/10 px-4 py-1 rounded-full backdrop-blur-sm">--</span>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto relative z-20 bg-[#f8fafc] rounded-t-[2.5rem] -mt-8 px-5 pt-8 pb-8 shadow-[0_-8px_30px_rgba(0,0,0,0.1)]">
             
             <div id="loading" class="py-20 text-center flex flex-col items-center justify-center">
-                <div class="bg-green-50 p-4 rounded-full mb-4">
-                    <i data-lucide="loader-2" class="w-8 h-8 spinner text-green-600"></i>
+                <div class="bg-emerald-100 p-4 rounded-full mb-4 shadow-inner">
+                    <i data-lucide="loader-2" class="w-8 h-8 spinner text-emerald-600"></i>
                 </div>
-                <p id="loading-text" class="text-gray-600 font-medium">তথ্য সংগ্রহ করা হচ্ছে...</p>
+                <p id="loading-text" class="text-gray-500 font-medium tracking-wide">তথ্য সংগ্রহ করা হচ্ছে...</p>
             </div>
 
-            <!-- Content Container -->
-            <div id="weather-content" class="hidden px-5 space-y-6">
-                <!-- 1. Nowcasting Alert -->
-                <div id="nowcast-banner" class="hidden w-full"></div>
+            <div id="weather-content" class="hidden space-y-6 fade-in">
+                
+                <div id="nowcast-banner" class="hidden w-full transition-all duration-300"></div>
 
-                <!-- 2. Today's Harvest Advice -->
-                <div id="harvest-alert" class="rounded-2xl border p-4 shadow-sm transition-all"></div>
+                <div id="harvest-alert" class="rounded-3xl p-5 shadow-sm border transition-all duration-300"></div>
 
-                <!-- 3. Current Weather Details Grid -->
+                <!-- Grid -->
                 <div class="grid grid-cols-3 gap-3">
-                    <div class="bg-blue-50/50 rounded-2xl p-3 flex flex-col items-center justify-center border border-blue-100/50">
-                        <div class="bg-blue-100/50 p-2 rounded-full mb-2"><i data-lucide="droplets" class="w-5 h-5 text-blue-600"></i></div>
-                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">আর্দ্রতা</p>
-                        <p id="detail-humidity" class="font-bold text-gray-800 text-sm">--%</p>
+                    <div class="bg-white rounded-3xl p-4 flex flex-col items-center justify-center shadow-sm border border-gray-100/50">
+                        <div class="bg-blue-50 text-blue-500 p-2.5 rounded-full mb-2"><i data-lucide="droplets" class="w-5 h-5"></i></div>
+                        <p class="text-[11px] text-gray-400 font-bold mb-0.5 tracking-wider">আর্দ্রতা</p>
+                        <p id="detail-humidity" class="font-bold text-gray-800 text-[15px]">--%</p>
                     </div>
-                    <div class="bg-gray-50 rounded-2xl p-3 flex flex-col items-center justify-center border border-gray-100">
-                        <div class="bg-gray-200/50 p-2 rounded-full mb-2"><i data-lucide="wind" class="w-5 h-5 text-gray-600"></i></div>
-                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">বাতাস</p>
-                        <p id="detail-wind" class="font-bold text-gray-800 text-sm">-- কিমি/ঘ</p>
+                    <div class="bg-white rounded-3xl p-4 flex flex-col items-center justify-center shadow-sm border border-gray-100/50">
+                        <div class="bg-gray-50 text-gray-500 p-2.5 rounded-full mb-2"><i data-lucide="wind" class="w-5 h-5"></i></div>
+                        <p class="text-[11px] text-gray-400 font-bold mb-0.5 tracking-wider">বাতাস</p>
+                        <p id="detail-wind" class="font-bold text-gray-800 text-[15px]">-- কিমি/ঘ</p>
                     </div>
-                    <div class="bg-indigo-50/50 rounded-2xl p-3 flex flex-col items-center justify-center border border-indigo-100/50">
-                        <div class="bg-indigo-100/50 p-2 rounded-full mb-2"><i data-lucide="umbrella" class="w-5 h-5 text-indigo-600"></i></div>
-                        <p class="text-[11px] text-gray-500 font-semibold mb-0.5">বৃষ্টিপাত</p>
-                        <p id="detail-precip" class="font-bold text-gray-800 text-sm">-- মিমি</p>
+                    <div class="bg-white rounded-3xl p-4 flex flex-col items-center justify-center shadow-sm border border-gray-100/50">
+                        <div class="bg-indigo-50 text-indigo-500 p-2.5 rounded-full mb-2"><i data-lucide="umbrella" class="w-5 h-5"></i></div>
+                        <p class="text-[11px] text-gray-400 font-bold mb-0.5 tracking-wider">বৃষ্টিপাত</p>
+                        <p id="detail-precip" class="font-bold text-gray-800 text-[15px]">-- মিমি</p>
                     </div>
                 </div>
 
-                <!-- 4. Hourly Forecast -->
+                <!-- Hourly Forecast -->
                 <div>
-                    <div class="flex justify-between items-end mb-3">
-                        <h3 class="font-bold text-lg text-gray-800">আজকের পূর্বাভাস</h3>
-                        <span class="text-xs text-gray-400 font-medium">প্রতি ঘণ্টা</span>
+                    <div class="flex justify-between items-end mb-3 px-1">
+                        <h3 class="font-bold text-[17px] text-gray-800">আজকের পূর্বাভাস</h3>
+                        <span class="text-xs text-gray-400 font-medium bg-gray-100 px-2 py-1 rounded-md">প্রতি ঘণ্টা</span>
                     </div>
                     <div class="relative">
-                        <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent z-10 pointer-events-none"></div>
-                        <div id="hourly-list" class="flex overflow-x-auto gap-3 pb-2 pt-1 no-scrollbar snap-x"></div>
+                        <div class="absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-[#f8fafc] to-transparent z-10 pointer-events-none"></div>
+                        <div id="hourly-list" class="flex overflow-x-auto gap-3 pb-3 pt-1 no-scrollbar snap-x"></div>
                     </div>
                 </div>
 
-                <!-- 5. 7-Day Forecast -->
+                <!-- 7-Day Forecast -->
                 <div>
-                    <h3 class="font-bold text-lg text-gray-800 mb-3">আগামী ৭ দিন</h3>
-                    <div id="forecast-list" class="bg-gray-50/50 border border-gray-100 rounded-2xl p-2 space-y-1"></div>
+                    <div class="flex justify-between items-end mb-3 px-1">
+                        <h3 class="font-bold text-[17px] text-gray-800">আগামী ৭ দিন</h3>
+                        <span class="text-[11px] text-gray-400 font-medium">বিস্তারিত দেখতে ক্লিক করুন</span>
+                    </div>
+                    <div id="forecast-list" class="bg-white border border-gray-100 rounded-3xl p-2 shadow-sm space-y-1"></div>
                 </div>
             </div> 
             
-            <!-- Footer Info -->
-            <div id="footer-info" class="hidden mt-8 px-5">
-                <div class="flex items-center justify-center gap-2 text-[11px] text-gray-400 mb-3">
-                    <i data-lucide="database" class="w-3 h-3"></i> 
-                    <span>তথ্যসূত্র: Open-Meteo</span>
-                    <span>•</span>
-                    <span>আপডেট: <span id="last-update" class="font-semibold">--</span></span>
+            <!-- Footer -->
+            <div id="footer-info" class="hidden mt-8 fade-in">
+                <div class="bg-amber-50/80 border border-amber-100 rounded-2xl p-4 mb-6 shadow-sm">
+                    <p class="text-[12px] text-amber-800 leading-relaxed font-medium">
+                        <span class="font-bold text-amber-900 bg-amber-200/50 px-1.5 py-0.5 rounded mr-1"><i data-lucide="info" class="w-3 h-3 inline mr-0.5 -mt-0.5"></i>সতর্কীকরণ</span> 
+                        আবহাওয়ার পূর্বাভাস স্যাটেলাইট ডেটার অনুমান মাত্র, যা সবসময় ১০০% নির্ভুল নাও হতে পারে। অ্যালার্টগুলো আপনাদের বাড়তি সতর্কতার উদ্দেশ্যে তৈরি করা হয়েছে।
+                    </p>
                 </div>
-                
-                <div class="border-t border-gray-100 pt-4 pb-2 text-center">
+                <div class="flex flex-col items-center justify-center gap-1.5 text-[11px] text-gray-400 mb-4">
+                    <div class="flex items-center gap-1.5">
+                        <i data-lucide="database" class="w-3.5 h-3.5"></i> 
+                        <span>তথ্যসূত্র: Open-Meteo API</span>
+                    </div>
+                    <span>সর্বশেষ আপডেট: <span id="last-update" class="font-semibold text-gray-500">--</span></span>
+                </div>
+                <div class="border-t border-gray-200 pt-5 pb-2 text-center">
                     <p class="text-[12px] text-gray-500 font-medium">
-                        উন্নয়নে: <span class="text-green-700 font-bold tracking-wide">মিজানুর রহমান</span>
+                        উন্নয়নে: <span class="text-emerald-600 font-bold tracking-wide text-[13px]">মিজানুর রহমান</span>
                     </p>
                 </div>
             </div>
-        </div>
+        </main>
 
         <!-- Location Search Modal -->
-        <div id="location-modal" class="fixed inset-0 bg-gray-900/40 z-50 hidden flex-col justify-end sm:justify-center items-center backdrop-blur-sm">
-            <div class="bg-white w-full sm:w-[400px] sm:rounded-3xl rounded-t-3xl p-6 shadow-2xl transform transition-transform translate-y-full" id="modal-content">
-                <div class="flex justify-between items-center mb-5">
+        <div id="location-modal" class="fixed inset-0 bg-gray-900/40 z-50 hidden flex-col justify-end sm:justify-center items-center backdrop-blur-sm transition-opacity modal-overlay opacity-0">
+            <div class="bg-white w-full sm:w-[420px] sm:rounded-3xl rounded-t-[2rem] p-6 shadow-2xl transform transition-transform translate-y-full" id="modal-content">
+                <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5 sm:hidden"></div>
+                <div class="flex justify-between items-center mb-6">
                     <h3 class="text-xl font-bold text-gray-800">স্থান পরিবর্তন করুন</h3>
-                    <button onclick="closeLocationModal()" class="p-2 bg-gray-100 rounded-full hover:bg-gray-200">
-                        <i data-lucide="x" class="w-5 h-5 text-gray-600"></i>
+                    <button onclick="closeLocationModal()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
                     </button>
                 </div>
-                
-                <button onclick="getLocationViaGPS()" class="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 py-3 px-4 rounded-xl font-bold flex items-center justify-center gap-2 mb-4 transition-colors">
+                <button onclick="getLocationViaGPS()" class="w-full bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-100 py-3.5 px-4 rounded-2xl font-bold flex items-center justify-center gap-2 mb-5 transition-colors shadow-sm">
                     <i data-lucide="target" class="w-5 h-5"></i>
                     আমার বর্তমান অবস্থান ব্যবহার করুন
                 </button>
-
-                <div class="relative flex items-center my-4">
-                    <div class="flex-grow border-t border-gray-200"></div>
-                    <span class="flex-shrink-0 mx-4 text-gray-400 text-sm">অথবা সার্চ করুন</span>
-                    <div class="flex-grow border-t border-gray-200"></div>
+                <div class="relative flex items-center my-5">
+                    <div class="flex-grow border-t border-gray-100"></div>
+                    <span class="flex-shrink-0 mx-4 text-gray-400 text-[13px] font-medium">অথবা সার্চ করুন</span>
+                    <div class="flex-grow border-t border-gray-100"></div>
                 </div>
-
-                <div class="flex gap-2">
+                <div class="flex gap-2 mb-2">
                     <div class="relative flex-1">
-                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
-                        <input type="text" id="search-input" placeholder="যেমন: ঢাকা, রাজশাহী..." class="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-700">
+                        <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" id="search-input" placeholder="যেমন: ঢাকা, রাজশাহী..." class="w-full bg-gray-50 border border-gray-200 rounded-2xl py-3.5 pl-11 pr-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-gray-700 shadow-inner">
                     </div>
-                    <button onclick="searchLocation()" class="bg-green-600 hover:bg-green-700 text-white px-5 rounded-xl font-medium transition-colors">
+                    <button onclick="searchLocation()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 rounded-2xl font-medium transition-colors shadow-sm">
                         খুঁজুন
                     </button>
                 </div>
-                <p id="search-error" class="text-red-500 text-sm mt-2 hidden text-center">স্থানটি খুঁজে পাওয়া যায়নি।</p>
+                <p id="search-error" class="text-red-500 text-sm mt-2 hidden text-center font-medium fade-in">স্থানটি খুঁজে পাওয়া যায়নি। সঠিক বানান লিখুন।</p>
             </div>
         </div>
 
-        <!-- PWA App Install Modal (Bottom Sheet) -->
-        <div id="pwa-install-modal" class="fixed inset-x-0 bottom-0 z-50 hidden flex-col items-center pb-4 px-4 pointer-events-none">
-            <div id="pwa-sheet-content" class="bg-white w-full max-w-md rounded-3xl p-5 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] border border-gray-100 bottom-sheet-enter pointer-events-auto">
+        <!-- Daily Forecast Details Modal (NEW) -->
+        <div id="daily-detail-modal" class="fixed inset-0 bg-gray-900/40 z-50 hidden flex-col justify-end sm:justify-center items-center backdrop-blur-sm transition-opacity modal-overlay opacity-0">
+            <div class="bg-white w-full sm:w-[400px] sm:rounded-3xl rounded-t-[2rem] p-6 shadow-2xl transform transition-transform translate-y-full" id="daily-modal-content">
+                <div class="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-5 sm:hidden"></div>
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 id="daily-modal-date" class="text-xl font-bold text-gray-800">--</h3>
+                        <p id="daily-modal-desc" class="text-sm text-gray-500 font-medium flex items-center gap-1.5 mt-1">--</p>
+                    </div>
+                    <button onclick="closeDailyModal()" class="p-2 bg-gray-50 rounded-full hover:bg-gray-100 transition-colors">
+                        <i data-lucide="x" class="w-5 h-5 text-gray-500"></i>
+                    </button>
+                </div>
+                
+                <div class="flex justify-around items-center bg-gray-50 rounded-2xl p-4 mb-5 border border-gray-100">
+                    <div class="text-center">
+                        <p class="text-[11px] text-gray-400 font-bold mb-1">সর্বোচ্চ</p>
+                        <p id="daily-modal-max" class="text-2xl font-bold text-gray-800">--°</p>
+                    </div>
+                    <div class="w-px h-10 bg-gray-200"></div>
+                    <div class="text-center">
+                        <p class="text-[11px] text-gray-400 font-bold mb-1">সর্বনিম্ন</p>
+                        <p id="daily-modal-min" class="text-2xl font-bold text-gray-500">--°</p>
+                    </div>
+                    <div class="w-px h-10 bg-gray-200"></div>
+                    <div class="text-center">
+                        <p class="text-[11px] text-gray-400 font-bold mb-1">বৃষ্টি</p>
+                        <p id="daily-modal-prob" class="text-xl font-bold text-blue-600 flex justify-center items-center gap-1">--%</p>
+                    </div>
+                </div>
+
+                <!-- Dynamic Harvest Notice Container -->
+                <div id="daily-modal-notice" class="rounded-2xl p-4 border mb-2 transition-all">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- PWA App Install Modal -->
+        <div id="pwa-install-modal" class="fixed inset-x-0 bottom-0 z-50 hidden flex-col items-center pb-5 px-4 pointer-events-none transition-opacity modal-overlay opacity-0">
+            <div id="pwa-sheet-content" class="bg-white w-full max-w-[420px] rounded-[2rem] p-6 shadow-[0_-10px_40px_rgba(0,0,0,0.15)] border border-gray-100 bottom-sheet-enter pointer-events-auto">
                 <div class="flex items-start gap-4">
-                    <!-- Base64 App Icon -->
-                    <div class="w-16 h-16 bg-gradient-to-br from-green-500 to-green-600 rounded-2xl flex items-center justify-center shrink-0 shadow-inner">
+                    <div class="w-16 h-16 bg-gradient-to-br from-emerald-500 to-green-600 rounded-[1.25rem] flex items-center justify-center shrink-0 shadow-inner">
                         <i data-lucide="cloud-sun" class="w-8 h-8 text-white"></i>
                     </div>
                     <div>
-                        <h3 class="text-lg font-bold text-gray-900 leading-tight mb-1">কৃষি আবহাওয়া অ্যাপ</h3>
-                        <p class="text-[13px] text-gray-600 leading-snug">সহজে এবং দ্রুত আবহাওয়ার খবর পেতে অ্যাপটি আপনার মোবাইলে ইনস্টল করুন।</p>
+                        <h3 class="text-[17px] font-bold text-gray-900 leading-tight mb-1">কৃষি আবহাওয়া অ্যাপ</h3>
+                        <p class="text-[13px] text-gray-500 leading-snug">সহজে এবং দ্রুত আবহাওয়ার খবর পেতে অ্যাপটি আপনার মোবাইলে ইনস্টল করুন।</p>
                     </div>
                 </div>
-                <div class="flex gap-3 mt-5">
-                    <button onclick="dismissInstallPrompt()" class="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-2.5 rounded-xl font-semibold text-sm transition-colors">
+                <div class="flex gap-3 mt-6">
+                    <button onclick="dismissInstallPrompt()" class="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-600 border border-gray-200 py-3 rounded-2xl font-semibold text-sm transition-colors">
                         পরে
                     </button>
-                    <button onclick="installPWA()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2.5 rounded-xl font-bold text-sm shadow-md transition-colors flex justify-center items-center gap-1.5">
+                    <button onclick="installPWA()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white py-3 rounded-2xl font-bold text-sm shadow-md shadow-emerald-200 transition-all active:scale-95 flex justify-center items-center gap-1.5">
                         <i data-lucide="download" class="w-4 h-4"></i> ইনস্টল করুন
                     </button>
                 </div>
@@ -234,21 +290,19 @@
 
     </div>
 
-    <!-- PWA Installation & Service Worker Logic -->
+    <!-- Scripts -->
     <script>
-        // Generate a dynamic SVG App Icon Base64
-        const appIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#16a34a" rx="112"/><path d="M160 256a96 96 0 0 1 192 0" fill="none" stroke="#fde047" stroke-width="48" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#fde047"/><path d="M368 352a48 48 0 0 0-48-48H192a64 64 0 0 0 0 128h128a80 80 0 0 0 48-80z" fill="#ffffff"/></svg>`;
+        const appIconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#10b981" rx="112"/><path d="M160 256a96 96 0 0 1 192 0" fill="none" stroke="#fde047" stroke-width="48" stroke-linecap="round"/><circle cx="256" cy="256" r="48" fill="#fde047"/><path d="M368 352a48 48 0 0 0-48-48H192a64 64 0 0 0 0 128h128a80 80 0 0 0 48-80z" fill="#ffffff"/></svg>`;
         const appIconBase64 = 'data:image/svg+xml;base64,' + btoa(appIconSvg);
 
-        // Inject Manifest
         const manifest = {
             name: "কৃষি আবহাওয়া",
             short_name: "আবহাওয়া",
             description: "কৃষকদের জন্য লাইভ আবহাওয়া ও পূর্বাভাস।",
             start_url: ".",
             display: "standalone",
-            background_color: "#f3f4f6",
-            theme_color: "#16a34a",
+            background_color: "#f8fafc",
+            theme_color: "#10b981",
             icons: [
                 { src: appIconBase64, sizes: "192x192 512x512", type: "image/svg+xml", purpose: "any maskable" }
             ]
@@ -257,14 +311,12 @@
         document.getElementById('manifest-link').setAttribute('href', URL.createObjectURL(manifestBlob));
         document.getElementById('apple-touch-icon').setAttribute('href', appIconBase64);
 
-        // Inject Service Worker (Caching logic)
         const swCode = `
-            const CACHE_NAME = 'krishi-weather-v2';
+            const CACHE_NAME = 'krishi-weather-v8';
             self.addEventListener('install', e => { self.skipWaiting(); });
             self.addEventListener('activate', e => { e.waitUntil(clients.claim()); });
             self.addEventListener('fetch', e => {
-                // Pass through for API requests to ensure real-time data
-                if (e.request.url.includes('api.open-meteo.com')) {
+                if (e.request.url.includes('api.open-meteo.com') || e.request.url.includes('nominatim.openstreetmap.org')) {
                     e.respondWith(fetch(e.request));
                 } else {
                     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
@@ -276,62 +328,56 @@
             navigator.serviceWorker.register(URL.createObjectURL(swBlob)).catch(err => console.log("SW bypass for environment."));
         }
 
-        // Handle PWA Install Prompt
         let deferredPrompt;
         const installModal = document.getElementById('pwa-install-modal');
         const sheetContent = document.getElementById('pwa-sheet-content');
 
         window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault(); // Prevent native prompt
+            e.preventDefault();
             deferredPrompt = e;
-            // Show custom modal after 3 seconds of using the app
             setTimeout(() => {
                 installModal.classList.remove('hidden');
                 installModal.classList.add('flex');
                 setTimeout(() => {
+                    installModal.classList.remove('opacity-0');
                     sheetContent.classList.add('bottom-sheet-active');
                     sheetContent.classList.remove('bottom-sheet-enter');
                 }, 10);
-            }, 3000);
-        });
-
-        window.addEventListener('appinstalled', () => {
-            dismissInstallPrompt();
-            deferredPrompt = null;
+            }, 4000);
         });
 
         function dismissInstallPrompt() {
             sheetContent.classList.remove('bottom-sheet-active');
             sheetContent.classList.add('bottom-sheet-enter');
+            installModal.classList.add('opacity-0');
             setTimeout(() => {
                 installModal.classList.add('hidden');
                 installModal.classList.remove('flex');
-            }, 400);
+            }, 300);
         }
 
         async function installPWA() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
-                if (outcome === 'accepted') {
-                    dismissInstallPrompt();
-                }
+                if (outcome === 'accepted') dismissInstallPrompt();
                 deferredPrompt = null;
             } else {
-                // Fallback for browsers that don't support beforeinstallprompt properly
                 alert("আপনার ব্রাউজারের মেনু (⋮) থেকে 'Install App' বা 'Add to Home Screen' নির্বাচন করুন।");
                 dismissInstallPrompt();
             }
         }
     </script>
 
-    <!-- Weather Logic & API Scripts -->
     <script>
         lucide.createIcons();
 
         let currentLat = 23.651;
         let currentLon = 88.644;
         let currentLocationName = "রতনপুর, মেহেরপুর";
+        
+        // Global object to store daily data for modal access
+        let storedDailyData = []; 
 
         const weatherCodes = {
             0: { text: "পরিষ্কার আকাশ", icon: "sun", color: "text-amber-500" },
@@ -364,15 +410,18 @@
             }).join('');
         }
 
-        function getDayName(dateString) {
-            const days = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
+        function getDayName(dateString, isFull = false) {
+            const shortDays = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহস্পতি', 'শুক্র', 'শনি'];
+            const fullDays = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+            const daysToUse = isFull ? fullDays : shortDays;
+            
             const date = new Date(dateString);
             const today = new Date();
             if (date.toDateString() === today.toDateString()) return 'আজ';
             const tomorrow = new Date();
             tomorrow.setDate(tomorrow.getDate() + 1);
             if (date.toDateString() === tomorrow.toDateString()) return 'আগামীকাল';
-            return days[date.getDay()];
+            return daysToUse[date.getDay()];
         }
 
         function formatHour(isoString) {
@@ -384,31 +433,93 @@
             return en2bnNumber(hours) + ' ' + ampm;
         }
 
-        // --- Location UI Logic ---
+        // Location Modal Functions
         function openLocationModal() {
             const modal = document.getElementById('location-modal');
             const content = document.getElementById('modal-content');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            setTimeout(() => { content.classList.remove('translate-y-full'); }, 10);
+            setTimeout(() => { 
+                modal.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full'); 
+            }, 10);
+            if(window.innerWidth > 640) {
+                setTimeout(() => { document.getElementById('search-input').focus(); }, 300);
+            }
         }
 
         function closeLocationModal() {
             const modal = document.getElementById('location-modal');
             const content = document.getElementById('modal-content');
             content.classList.add('translate-y-full');
+            modal.classList.add('opacity-0');
             setTimeout(() => { 
                 modal.classList.add('hidden'); 
                 modal.classList.remove('flex');
                 document.getElementById('search-error').classList.add('hidden');
+                document.getElementById('search-input').value = '';
             }, 300);
         }
 
-        // --- GPS Logic ---
+        // Daily Detail Modal Functions
+        function openDailyModal(index) {
+            const data = storedDailyData[index];
+            if(!data) return;
+
+            document.getElementById('daily-modal-date').innerText = data.fullDayName;
+            document.getElementById('daily-modal-desc').innerHTML = `<i data-lucide="${data.icon}" class="w-4 h-4 ${data.iconColor}"></i> ${data.desc}`;
+            document.getElementById('daily-modal-max').innerText = data.maxTemp + '°';
+            document.getElementById('daily-modal-min').innerText = data.minTemp + '°';
+            document.getElementById('daily-modal-prob').innerHTML = `<i data-lucide="droplets" class="w-4 h-4"></i> ${data.prob}%`;
+
+            const noticeBox = document.getElementById('daily-modal-notice');
+            if (data.rawProb >= 40) {
+                noticeBox.className = "rounded-2xl p-4 border mb-2 transition-all bg-red-50 border-red-100 text-red-800";
+                noticeBox.innerHTML = `
+                    <h4 class="font-bold text-[15px] mb-1.5 flex items-center gap-1.5"><i data-lucide="alert-triangle" class="w-4 h-4 text-red-500"></i> মাঠে ধান কাটা ঝুঁকিপূর্ণ</h4>
+                    <p class="text-[13px] text-red-600/90 leading-snug">এই দিনে বৃষ্টির সম্ভাবনা ${data.prob}%। ধান কাটা থেকে বিরত থাকাই ভালো।</p>
+                `;
+            } else if (data.rawProb >= 15) {
+                noticeBox.className = "rounded-2xl p-4 border mb-2 transition-all bg-amber-50 border-amber-100 text-amber-800";
+                noticeBox.innerHTML = `
+                    <h4 class="font-bold text-[15px] mb-1.5 flex items-center gap-1.5"><i data-lucide="cloud-rain" class="w-4 h-4 text-amber-500"></i> হালকা বৃষ্টির সম্ভাবনা</h4>
+                    <p class="text-[13px] text-amber-700/90 leading-snug">এই দিনে বৃষ্টির সম্ভাবনা ${data.prob}%। মাঠে কাজ করার সময় সতর্ক থাকুন।</p>
+                `;
+            } else {
+                noticeBox.className = "rounded-2xl p-4 border mb-2 transition-all bg-emerald-50 border-emerald-100 text-emerald-800";
+                noticeBox.innerHTML = `
+                    <h4 class="font-bold text-[15px] mb-1.5 flex items-center gap-1.5"><i data-lucide="sun-medium" class="w-4 h-4 text-emerald-600"></i> আবহাওয়া অনুকূল</h4>
+                    <p class="text-[13px] text-emerald-700/90 leading-snug">এই দিনে বৃষ্টির কোনো সম্ভাবনা নেই। ধান কাটা বা শুকানোর জন্য খুব ভালো দিন।</p>
+                `;
+            }
+
+            lucide.createIcons();
+
+            const modal = document.getElementById('daily-detail-modal');
+            const content = document.getElementById('daily-modal-content');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            setTimeout(() => { 
+                modal.classList.remove('opacity-0');
+                content.classList.remove('translate-y-full'); 
+            }, 10);
+        }
+
+        function closeDailyModal() {
+            const modal = document.getElementById('daily-detail-modal');
+            const content = document.getElementById('daily-modal-content');
+            content.classList.add('translate-y-full');
+            modal.classList.add('opacity-0');
+            setTimeout(() => { 
+                modal.classList.add('hidden'); 
+                modal.classList.remove('flex');
+            }, 300);
+        }
+
+        // GPS and Search Functions
         function getLocationViaGPS() {
             closeLocationModal();
             showLoading("আপনার বর্তমান অবস্থান খোঁজা হচ্ছে...");
-            
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     async (position) => {
@@ -429,20 +540,16 @@
             }
         }
 
-        // --- Search Logic ---
         async function searchLocation() {
             const query = document.getElementById('search-input').value.trim();
             if(!query) return;
-
             document.getElementById('search-error').classList.add('hidden');
             const searchBtn = event.currentTarget;
             searchBtn.innerHTML = `<i data-lucide="loader-2" class="w-5 h-5 spinner text-white"></i>`;
             lucide.createIcons();
-
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}, Bangladesh&format=json&limit=1`);
                 const data = await res.json();
-
                 if(data && data.length > 0) {
                     currentLat = data[0].lat;
                     currentLon = data[0].lon;
@@ -459,7 +566,10 @@
             }
         }
 
-        // --- Reverse Geocoding ---
+        document.getElementById('search-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') searchLocation();
+        });
+
         async function reverseGeocode(lat, lon) {
             try {
                 const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
@@ -481,19 +591,36 @@
             document.getElementById('weather-content').style.display = 'none';
             document.getElementById('footer-info').style.display = 'none';
             document.getElementById('header-temp-view').style.display = 'none';
-            
             document.getElementById('loading').style.display = 'flex';
             document.getElementById('header-temp-loading').style.display = 'flex';
             document.getElementById('loading-text').innerText = text || "তথ্য সংগ্রহ করা হচ্ছে...";
         }
 
-        // --- Main Weather Fetch ---
+        // ডাইনামিক ব্যাকগ্রাউন্ড কালার ফাংশন
+        function getThemeForWeather(code, isDay) {
+            if (isDay === 0) { // রাতের বেলা
+                if ([0, 1].includes(code)) return { grad: "from-indigo-900 via-slate-900 to-blue-950", hex: "#1e1b4b" };
+                if ([2, 3].includes(code)) return { grad: "from-slate-800 via-gray-800 to-slate-900", hex: "#1e293b" };
+                if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { grad: "from-slate-800 via-slate-700 to-indigo-900", hex: "#334155" };
+                if ([95, 96, 99].includes(code)) return { grad: "from-gray-900 via-purple-950 to-slate-900", hex: "#0f172a" };
+                return { grad: "from-slate-800 via-slate-700 to-slate-900", hex: "#1e293b" }; 
+            } else { // দিনের বেলা
+                if ([0, 1].includes(code)) return { grad: "from-sky-500 via-blue-500 to-blue-600", hex: "#3b82f6" };
+                if ([2, 3].includes(code)) return { grad: "from-slate-500 via-gray-500 to-slate-600", hex: "#64748b" };
+                if ([45, 48].includes(code)) return { grad: "from-gray-400 via-slate-400 to-gray-500", hex: "#9ca3af" };
+                if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return { grad: "from-slate-700 via-slate-600 to-indigo-800", hex: "#475569" };
+                if ([95, 96, 99].includes(code)) return { grad: "from-slate-900 via-purple-900 to-slate-800", hex: "#1e1b4b" };
+                return { grad: "from-emerald-600 via-green-500 to-green-600", hex: "#10b981" }; // ডিফল্ট সবুজ
+            }
+        }
+
         async function fetchWeatherData() {
             showLoading("আবহাওয়ার লাইভ আপডেট আনা হচ্ছে...");
             document.getElementById('current-location-name').innerText = currentLocationName;
 
             try {
-                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation&minutely_15=precipitation,precipitation_probability&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FDhaka`;
+                // API লিংকে is_day যুক্ত করা হয়েছে যাতে দিন ও রাত চেনা যায়
+                const apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${currentLat}&longitude=${currentLon}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,precipitation,is_day&minutely_15=precipitation&hourly=temperature_2m,precipitation_probability,weather_code&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=Asia%2FDhaka`;
                 
                 const response = await fetch(apiUrl);
                 if(!response.ok) throw new Error("API Request Failed");
@@ -505,31 +632,38 @@
                 document.getElementById('weather-content').style.display = 'block';
                 document.getElementById('footer-info').style.display = 'block';
                 
-                // 1. Current Weather
                 const current = data.current;
                 const codeInfo = weatherCodes[current.weather_code] || { text: "অজানা", icon: "cloud", color:"text-gray-500" };
                 
-                document.getElementById('main-temp').innerText = en2bnNumber(Math.round(current.temperature_2m)) + '°';
-                document.getElementById('main-desc').innerHTML = `<i data-lucide="${codeInfo.icon}" class="inline w-5 h-5 mr-1 align-text-bottom"></i> ${codeInfo.text}`;
+                // আবহাওয়া অনুযায়ী অ্যাপের হেডার ও থিম কালার আপডেট
+                const theme = getThemeForWeather(current.weather_code, current.is_day);
+                document.getElementById('app-header').className = `bg-gradient-to-br ${theme.grad} text-white pt-6 pb-12 px-6 relative z-10 transition-all duration-700`;
+                document.querySelector('meta[name="theme-color"]').setAttribute("content", theme.hex);
+
+                document.getElementById('main-temp').innerText = en2bnNumber(Math.round(current.temperature_2m));
+                document.getElementById('main-desc').innerText = codeInfo.text;
+                document.getElementById('main-icon-container').innerHTML = `<i data-lucide="${codeInfo.icon}" class="w-20 h-20 text-white drop-shadow-md"></i>`;
                 
                 document.getElementById('detail-humidity').innerText = en2bnNumber(current.relative_humidity_2m) + '%';
                 document.getElementById('detail-wind').innerText = en2bnNumber(Math.round(current.wind_speed_10m));
                 document.getElementById('detail-precip').innerText = en2bnNumber(current.precipitation);
                 
-                // 2. NOWCASTING LOGIC
+                // NOWCASTING LOGIC
                 const nowTime = new Date().getTime();
                 const minutely = data.minutely_15;
                 const nowcastBanner = document.getElementById('nowcast-banner');
                 let rainMinutes = null;
                 let isRainingNow = current.precipitation > 0;
 
-                for (let i = 0; i < minutely.time.length; i++) {
-                    const blockTime = new Date(minutely.time[i]).getTime();
-                    if (blockTime >= nowTime && blockTime <= nowTime + 60 * 60000) {
-                        if (minutely.precipitation[i] > 0 || minutely.precipitation_probability[i] >= 30) {
-                            const diffMins = Math.round((blockTime - nowTime) / 60000);
-                            if (rainMinutes === null) rainMinutes = diffMins; 
-                            break;
+                if(minutely && minutely.time) {
+                    for (let i = 0; i < minutely.time.length; i++) {
+                        const blockTime = new Date(minutely.time[i]).getTime();
+                        if (blockTime >= nowTime && blockTime <= nowTime + 60 * 60000) {
+                            if (minutely.precipitation[i] > 0) {
+                                const diffMins = Math.round((blockTime - nowTime) / 60000);
+                                if (rainMinutes === null) rainMinutes = diffMins; 
+                                break;
+                            }
                         }
                     }
                 }
@@ -537,11 +671,11 @@
                 if (isRainingNow) {
                     nowcastBanner.style.display = 'block';
                     nowcastBanner.innerHTML = `
-                        <div class="bg-red-500 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 alert-pulse">
-                            <div class="bg-white/20 p-2 rounded-full shrink-0"><i data-lucide="cloud-lightning" class="w-6 h-6"></i></div>
+                        <div class="bg-red-500 text-white p-4 rounded-3xl shadow-md flex items-center gap-4 alert-pulse">
+                            <div class="bg-white/20 p-3 rounded-full shrink-0"><i data-lucide="cloud-lightning" class="w-7 h-7"></i></div>
                             <div>
-                                <h4 class="font-bold text-base leading-tight mb-0.5">এখন বৃষ্টি হচ্ছে!</h4>
-                                <p class="text-[12px] text-red-50 opacity-90">নিরাপদ স্থানে অবস্থান করুন ও ফসল ঢেকে রাখুন।</p>
+                                <h4 class="font-bold text-[17px] leading-tight mb-1">এখন বৃষ্টি হচ্ছে!</h4>
+                                <p class="text-[13px] text-red-50 opacity-90 leading-snug">নিরাপদ স্থানে অবস্থান করুন ও ফসল ঢেকে রাখুন।</p>
                             </div>
                         </div>
                     `;
@@ -549,116 +683,143 @@
                     nowcastBanner.style.display = 'block';
                     const minStr = rainMinutes <= 5 ? "যেকোনো মুহূর্তে" : `আগামী ${en2bnNumber(rainMinutes)} মিনিটের মধ্যে`;
                     nowcastBanner.innerHTML = `
-                        <div class="bg-orange-500 text-white p-4 rounded-2xl shadow-md flex items-center gap-3 alert-pulse">
-                            <div class="bg-white/20 p-2 rounded-full shrink-0"><i data-lucide="timer" class="w-6 h-6"></i></div>
+                        <div class="bg-orange-500 text-white p-4 rounded-3xl shadow-md flex items-center gap-4 alert-pulse">
+                            <div class="bg-white/20 p-3 rounded-full shrink-0"><i data-lucide="timer" class="w-7 h-7"></i></div>
                             <div>
-                                <h4 class="font-bold text-base leading-tight mb-0.5">বৃষ্টির সতর্কতা!</h4>
-                                <p class="text-[12px] text-orange-50 opacity-90"><span class="font-bold bg-white/20 px-1 rounded">${minStr}</span> বৃষ্টি শুরু হতে পারে।</p>
+                                <h4 class="font-bold text-[17px] leading-tight mb-1">বৃষ্টির সতর্কতা!</h4>
+                                <p class="text-[13px] text-orange-50 opacity-90 leading-snug"><span class="font-bold bg-white/20 px-1.5 py-0.5 rounded">${minStr}</span> বৃষ্টি শুরু হতে পারে।</p>
                             </div>
                         </div>
                     `;
                 } else {
                     nowcastBanner.style.display = 'block';
                     nowcastBanner.innerHTML = `
-                        <div class="bg-teal-50 border border-teal-100 p-3 rounded-2xl flex items-center gap-3">
-                            <div class="bg-teal-100 text-teal-600 p-1.5 rounded-full shrink-0"><i data-lucide="shield-check" class="w-5 h-5"></i></div>
+                        <div class="bg-teal-50 border border-teal-100 p-4 rounded-3xl flex items-center gap-3 shadow-sm">
+                            <div class="bg-teal-100 text-teal-600 p-2 rounded-full shrink-0"><i data-lucide="shield-check" class="w-6 h-6"></i></div>
                             <div>
-                                <p class="text-[13px] text-teal-800 font-medium leading-snug">আগামী ১ ঘণ্টায় বৃষ্টির কোনো সম্ভাবনা নেই। নিশ্চিন্তে কাজ করুন।</p>
+                                <p class="text-[14px] text-teal-800 font-medium leading-snug">আগামী ১ ঘণ্টায় বৃষ্টির কোনো সম্ভাবনা নেই। নিশ্চিন্তে কাজ করুন।</p>
                             </div>
                         </div>
                     `;
                 }
 
-                // 3. Daily Harvest Alert
+                // HARVEST ADVICE (TODAY)
                 const todayPrecipProb = data.daily.precipitation_probability_max[0];
                 const alertBox = document.getElementById('harvest-alert');
                 
                 if (todayPrecipProb >= 40) {
-                    alertBox.className = "rounded-2xl border p-4 shadow-sm transition-all bg-red-50/50 border-red-200 text-red-800";
+                    alertBox.className = "rounded-3xl border p-5 shadow-sm transition-all bg-red-50 border-red-100 text-red-800";
                     alertBox.innerHTML = `
-                        <div class="flex items-start gap-3">
-                            <i data-lucide="alert-triangle" class="w-5 h-5 text-red-500 shrink-0 mt-0.5"></i>
+                        <div class="flex items-start gap-4">
+                            <div class="bg-red-100 p-2 rounded-full shrink-0 mt-0.5"><i data-lucide="alert-triangle" class="w-5 h-5 text-red-500"></i></div>
                             <div>
-                                <h4 class="font-bold text-sm mb-1">আজ মাঠে ধান কাটা ঝুঁকিপূর্ণ</h4>
-                                <p class="text-xs text-red-600/80">আজ সারাদিনে বৃষ্টির সম্ভাবনা ${en2bnNumber(todayPrecipProb)}%। ধান কাটা থেকে বিরত থাকাই ভালো।</p>
+                                <h4 class="font-bold text-[15px] mb-1.5">আজ মাঠে ধান কাটা ঝুঁকিপূর্ণ</h4>
+                                <p class="text-[13px] text-red-600/90 leading-snug">আজ সারাদিনে বৃষ্টির সম্ভাবনা ${en2bnNumber(todayPrecipProb)}%। ধান কাটা থেকে বিরত থাকাই ভালো।</p>
                             </div>
                         </div>
                     `;
                 } else {
-                     alertBox.className = "rounded-2xl border p-4 shadow-sm transition-all bg-green-50/50 border-green-200 text-green-800";
+                     alertBox.className = "rounded-3xl border p-5 shadow-sm transition-all bg-emerald-50 border-emerald-100 text-emerald-800";
                      alertBox.innerHTML = `
-                        <div class="flex items-start gap-3">
-                            <i data-lucide="sun-medium" class="w-5 h-5 text-green-600 shrink-0 mt-0.5"></i>
+                        <div class="flex items-start gap-4">
+                            <div class="bg-emerald-100 p-2 rounded-full shrink-0 mt-0.5"><i data-lucide="sun-medium" class="w-5 h-5 text-emerald-600"></i></div>
                             <div>
-                                <h4 class="font-bold text-sm mb-1">আবহাওয়া ধান কাটার অনুকূল</h4>
-                                <p class="text-xs text-green-700/80">আজ বৃষ্টির সম্ভাবনা কম (${en2bnNumber(todayPrecipProb)}%)। ধান কাটা বা শুকানোর জন্য ভালো দিন।</p>
+                                <h4 class="font-bold text-[15px] mb-1.5">আবহাওয়া ধান কাটার অনুকূল</h4>
+                                <p class="text-[13px] text-emerald-700/90 leading-snug">আজ বৃষ্টির সম্ভাবনা কম (${en2bnNumber(todayPrecipProb)}%)। ধান কাটা বা শুকানোর জন্য ভালো দিন।</p>
                             </div>
                         </div>
                     `;
                 }
 
-                // 4. Hourly Forecast
+                // HOURLY FORECAST
                 const hourlyList = document.getElementById('hourly-list');
                 hourlyList.innerHTML = '';
-                const currentHourStr = new Date().toISOString().slice(0,13) + ":00";
-                let startIndex = data.hourly.time.findIndex(t => t.startsWith(currentHourStr));
-                if(startIndex === -1) startIndex = 0;
+                const currentApiTime = data.current.time; 
+                const currentApiHourStr = currentApiTime.slice(0, 13) + ":00"; 
+                
+                let startIndex = data.hourly.time.findIndex(t => t.startsWith(currentApiHourStr));
+                if(startIndex === -1) startIndex = 0; 
 
                 for (let i = startIndex; i < startIndex + 12; i++) {
                     if(!data.hourly.time[i]) break;
                     
+                    const isCurrent = i === startIndex;
                     const timeStr = formatHour(data.hourly.time[i]);
                     const temp = en2bnNumber(Math.round(data.hourly.temperature_2m[i]));
                     const prob = data.hourly.precipitation_probability[i];
                     const hCode = weatherCodes[data.hourly.weather_code[i]] || { icon: "cloud", color: "text-gray-400" };
                     
-                    let bgClass = "bg-white border-gray-100 text-gray-800";
-                    let probIconColor = "text-blue-400";
-                    if(prob >= 40) { bgClass = "bg-red-50 border-red-100 text-red-900"; probIconColor = "text-red-500"; }
-                    else if(prob > 15) { bgClass = "bg-orange-50 border-orange-100 text-orange-900"; probIconColor = "text-orange-500"; }
+                    let cardClass = isCurrent ? "bg-emerald-500 text-white shadow-md shadow-emerald-200" : "bg-white border-gray-100/50 text-gray-800 shadow-sm border";
+                    let timeColor = isCurrent ? "text-emerald-50" : "text-gray-400";
+                    let iconColor = isCurrent ? "text-white" : hCode.color;
+                    
+                    let probBlock = "";
+                    if(prob > 0) {
+                        let probColor = isCurrent ? "text-emerald-100" : (prob >= 40 ? "text-red-500" : "text-blue-500");
+                        probBlock = `<div class="flex items-center gap-0.5 text-[11px] font-semibold ${probColor}"><i data-lucide="droplets" class="w-3 h-3"></i> ${en2bnNumber(prob)}%</div>`;
+                    } else {
+                        probBlock = `<div class="flex items-center gap-0.5 text-[11px] font-medium text-transparent select-none"><i data-lucide="droplets" class="w-3 h-3"></i> 0%</div>`;
+                    }
 
                     hourlyList.innerHTML += `
-                        <div class="snap-center w-16 ${bgClass} border rounded-2xl py-3 flex flex-col items-center justify-center shrink-0 shadow-sm">
-                            <span class="text-[11px] font-semibold text-gray-500 mb-2 whitespace-nowrap">${i === startIndex ? 'এখন' : timeStr}</span>
-                            <i data-lucide="${hCode.icon}" class="w-6 h-6 ${hCode.color} mb-2"></i>
-                            <span class="font-bold text-sm mb-1.5">${temp}°</span>
-                            <div class="flex items-center gap-0.5 text-[10px] font-medium ${prob === 0 ? 'text-gray-300' : probIconColor}">
-                                <i data-lucide="droplets" class="w-3 h-3"></i> ${en2bnNumber(prob)}%
-                            </div>
+                        <div class="snap-center w-[72px] ${cardClass} rounded-[1.25rem] py-3.5 flex flex-col items-center justify-center shrink-0 transition-transform">
+                            <span class="text-[12px] font-semibold ${timeColor} mb-2 whitespace-nowrap">${isCurrent ? 'এখন' : timeStr}</span>
+                            <i data-lucide="${hCode.icon}" class="w-7 h-7 ${iconColor} mb-2.5"></i>
+                            <span class="font-bold text-[16px] mb-1 tracking-tight">${temp}°</span>
+                            ${probBlock}
                         </div>
                     `;
                 }
                 
-                // 5. 7-Day Forecast
+                // 7-DAY FORECAST & DATA STORAGE FOR MODAL
                 const daily = data.daily;
                 const forecastList = document.getElementById('forecast-list');
                 forecastList.innerHTML = '';
+                storedDailyData = []; // Reset stored data
                 
                 for (let i = 0; i < daily.time.length; i++) {
                     const dayName = getDayName(daily.time[i]);
+                    const fullDayName = getDayName(daily.time[i], true);
                     const maxTemp = en2bnNumber(Math.round(daily.temperature_2m_max[i]));
                     const minTemp = en2bnNumber(Math.round(daily.temperature_2m_min[i]));
-                    const precipProb = daily.precipitation_probability_max[i];
-                    const dCodeInfo = weatherCodes[daily.weather_code[i]] || { icon: "cloud", color: "text-gray-400" };
+                    const rawProb = daily.precipitation_probability_max[i];
+                    const precipProb = en2bnNumber(rawProb);
+                    const dCodeInfo = weatherCodes[daily.weather_code[i]] || { text: "অজানা", icon: "cloud", color: "text-gray-400" };
                     
-                    let probHtml = `<span class="text-[11px] text-gray-300 w-12 text-center">-</span>`;
-                    if (precipProb >= 40) probHtml = `<span class="text-[11px] text-red-600 font-bold bg-red-100/80 px-2 py-0.5 rounded-full w-12 text-center">${en2bnNumber(precipProb)}%</span>`;
-                    else if (precipProb > 0) probHtml = `<span class="text-[11px] text-blue-600 font-medium bg-blue-50 px-2 py-0.5 rounded-full w-12 text-center">${en2bnNumber(precipProb)}%</span>`;
+                    // Store data for the click event
+                    storedDailyData.push({
+                        dateStr: daily.time[i],
+                        fullDayName: fullDayName,
+                        desc: dCodeInfo.text,
+                        icon: dCodeInfo.icon,
+                        iconColor: dCodeInfo.color,
+                        maxTemp: maxTemp,
+                        minTemp: minTemp,
+                        rawProb: rawProb,
+                        prob: precipProb
+                    });
+
+                    let probHtml = `<span class="text-[11px] text-gray-300 w-12 text-center font-medium">-</span>`;
+                    if (rawProb >= 40) probHtml = `<span class="text-[11px] text-red-600 font-bold bg-red-50 px-2 py-1 rounded-lg w-12 text-center">${precipProb}%</span>`;
+                    else if (rawProb > 0) probHtml = `<span class="text-[11px] text-blue-600 font-semibold bg-blue-50 px-2 py-1 rounded-lg w-12 text-center">${precipProb}%</span>`;
                     
                     const isToday = i === 0;
                     
                     const html = `
-                        <div class="flex items-center justify-between p-3 rounded-xl ${isToday ? 'bg-white shadow-sm ring-1 ring-gray-100' : 'hover:bg-gray-100/50'} transition-colors">
+                        <div onclick="openDailyModal(${i})" class="cursor-pointer flex items-center justify-between p-3.5 rounded-2xl ${isToday ? 'bg-emerald-50/50 ring-1 ring-emerald-100' : 'hover:bg-gray-50 active:bg-gray-100'} transition-colors">
                             <div class="flex items-center gap-3 w-1/3">
-                                <span class="font-semibold text-[13px] ${isToday ? 'text-green-700' : 'text-gray-700'}">${dayName}</span>
+                                <span class="font-bold text-[14px] ${isToday ? 'text-emerald-700' : 'text-gray-700'}">${dayName}</span>
                             </div>
-                            <div class="w-1/3 flex justify-center items-center gap-2">
-                                <i data-lucide="${dCodeInfo.icon}" class="w-4 h-4 ${dCodeInfo.color}"></i>
+                            <div class="w-1/3 flex justify-center items-center gap-2.5">
+                                <i data-lucide="${dCodeInfo.icon}" class="w-4.5 h-4.5 ${dCodeInfo.color}"></i>
                                 ${probHtml}
                             </div>
-                            <div class="w-1/3 text-right">
-                                <span class="font-bold text-gray-800 text-sm">${maxTemp}°</span>
-                                <span class="text-[11px] text-gray-400 font-medium ml-1">${minTemp}°</span>
+                            <div class="w-1/3 text-right flex justify-end items-center gap-2">
+                                <div>
+                                    <span class="font-bold text-gray-800 text-[15px]">${maxTemp}°</span>
+                                    <span class="text-[12px] text-gray-400 font-medium ml-1">${minTemp}°</span>
+                                </div>
+                                <i data-lucide="chevron-right" class="w-4 h-4 text-gray-300"></i>
                             </div>
                         </div>
                     `;
@@ -674,17 +835,16 @@
             } catch (error) {
                 console.error(error);
                 document.getElementById('loading').innerHTML = `
-                    <div class="bg-red-50 p-6 rounded-2xl mx-5 mt-10 text-center border border-red-100">
-                        <i data-lucide="wifi-off" class="w-10 h-10 text-red-400 mx-auto mb-3"></i>
-                        <p class="text-red-800 text-sm mb-4 font-medium">সংযোগ বিচ্ছিন্ন! ইন্টারনেট চেক করুন।</p>
-                        <button onclick="fetchWeatherData()" class="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-xl shadow-sm transition-colors">পুনরায় চেষ্টা করুন</button>
+                    <div class="bg-red-50 p-6 rounded-3xl mx-5 mt-10 text-center border border-red-100 fade-in">
+                        <i data-lucide="wifi-off" class="w-12 h-12 text-red-400 mx-auto mb-4"></i>
+                        <p class="text-red-800 text-[15px] mb-5 font-medium">সংযোগ বিচ্ছিন্ন! ইন্টারনেট চেক করুন।</p>
+                        <button onclick="fetchWeatherData()" class="px-6 py-3 bg-red-600 hover:bg-red-700 text-white text-sm font-bold rounded-2xl shadow-sm transition-colors">পুনরায় চেষ্টা করুন</button>
                     </div>
                 `;
                 lucide.createIcons();
             }
         }
 
-        // Run on load
         document.addEventListener('DOMContentLoaded', fetchWeatherData);
     </script>
 </body>
